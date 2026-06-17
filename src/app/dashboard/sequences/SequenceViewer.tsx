@@ -189,3 +189,74 @@ export function SequenceViewer({ sequence, onBack }: Props) {
     </div>
   )
 }
+
+// ── LandingPageGenerator appended to SequenceViewer file ──────────────────────
+export function LandingPageGenerator({ prospectId }: { prospectId?: string }) {
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<{ pageUrl: string; slug: string } | null>(null)
+  const [calendarUrl, setCalendarUrl] = useState('')
+  const [error, setError] = useState('')
+
+  async function generate() {
+    if (!prospectId) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/landing-pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prospectId, calendarUrl: calendarUrl || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setResult(data)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (result) {
+    return (
+      <div className="bg-green-50 border border-green-100 rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-green-800">✓ Landing page created</p>
+          <p className="text-xs text-green-600 mt-0.5 font-mono">{result.pageUrl}</p>
+        </div>
+        <a
+          href={result.pageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs bg-green-700 text-white px-3 py-1.5 rounded-lg hover:bg-green-800 transition-colors flex-shrink-0"
+        >
+          Preview →
+        </a>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-3">
+      <p className="text-sm font-medium text-gray-700">Generate personalised landing page</p>
+      <p className="text-xs text-gray-400">Claude writes a prospect-specific page with their ROI numbers and pain points. The URL is injected into Step 3 of the sequence.</p>
+      <input
+        type="url"
+        value={calendarUrl}
+        onChange={(e) => setCalendarUrl(e.target.value)}
+        placeholder="Your Calendly URL (optional) — e.g. calendly.com/yourname/15min"
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#13294b]/40 transition-colors"
+      />
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <button
+        onClick={generate}
+        disabled={loading || !prospectId}
+        className="w-full bg-[#13294b] text-white text-sm font-medium py-2.5 rounded-xl hover:bg-[#13294b]/90 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+      >
+        {loading
+          ? <><span className="animate-spin inline-block">⟳</span> Generating…</>
+          : '🔗 Generate landing page'}
+      </button>
+    </div>
+  )
+}
