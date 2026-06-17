@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ── Product knowledge ─────────────────────────────────────────────────────────
+model ProductContext {
+  id          String   @id @default(cuid())
+  name        String
+  rawContent  String   @db.Text
+  icp         Json?
+  valueProps  Json?
+  objections  Json?
+  proofPoints Json?
+  segments    Json?    // buyer segments: HR, pediatricians, hospitality, etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sequences Sequence[]
+}
+
+// ── Prospects ─────────────────────────────────────────────────────────────────
+model Prospect {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  firstName    String?
+  lastName     String?
+  title        String?
+  company      String?
+  linkedinUrl  String?
+  seniority    String?
+  industry     String?
+  companySize  String?
+  techStack    Json?
+  recentNews   Json?
+  inferredOkrs Json?
+  apolloId     String?
+  enriched     Boolean        @default(false)
+  status       ProspectStatus @default(PENDING)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  enrollments Enrollment[]
+}
+
+enum ProspectStatus {
+  PENDING
+  ENRICHING
+  READY
+  ENROLLED
+  REPLIED_POSITIVE
+  REPLIED_NEGATIVE
+  MEETING_SET
+  UNSUBSCRIBED
+}
+
+// ── Sequences ─────────────────────────────────────────────────────────────────
+model Sequence {
+  id               String         @id @default(cuid())
+  name             String
+  productContextId String
+  status           SequenceStatus @default(DRAFT)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  productContext ProductContext @relation(fields: [productContextId], references: [id])
+  steps          SequenceStep[]
+  enrollments    Enrollment[]
+}
+
+enum SequenceStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+model SequenceStep {
+  id         String   @id @default(cuid())
+  sequenceId String
+  stepNumber Int
+  stepType   StepType
+  delayDays  Int
+  createdAt  DateTime @default(now())
+
+  sequence Sequence      @relation(fields: [sequenceId], references: [id])
+  variants EmailVariant[]
+
+  @@unique([sequenceId, stepNumber])
+}
+
+enum StepType {
+  INTRO
+  VALUE
+  PROOF
+  BREAKUP
+}
+
+// ── Email variants (A/B) ──────────────────────────────────────────────────────
+model EmailVariant {
+  id            String     @id @default(cuid())
+  stepId        String
+  prospectId    String
+  variantLetter String     // A, B, C
+  subject       String
+  bodyText      String     @db.Text
+  bodyHtml      String     @db.Text
+  cta           String?
+  bodyLength    BodyLength @default(MEDIUM)
+  isWinner      Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+
+  step       SequenceStep @relation(fields: [stepId], references: [id])
+  sentEmails SentEmail[]
+}
+
+enum BodyLength {
+  SHORT
+  MEDIUM
+  LONG
+}
+
+// ── Sends & tracking ──────────────────────────────────────────────────────────
+model SentEmail {
+  id           String     @id @default(cuid())
+  variantId    String
+  enrollmentId String
+  externalId   String?
+  sentAt       DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  repliedAt    DateTime?
+  replyType    ReplyType?
+  replyText    String?    @db.Text
+  bouncedAt    DateTime?
+  createdAt    DateTime   @default(now())
+
+  variant    EmailVariant @relation(fields: [variantId], references: [id])
+  enrollment Enrollment   @relation(fields: [enrollmentId], references: [id])
+}
+
+enum ReplyType {
+  POSITIVE
+  NEGATIVE
+  OUT_OF_OFFICE
+  NEUTRAL
+}
+
+// ── Enrollments ───────────────────────────────────────────────────────────────
+model Enrollment {
+  id              String           @id @default(cuid())
+  prospectId      String
+  sequenceId      String
+  currentStep     Int              @default(1)
+  status          EnrollmentStatus @default(ACTIVE)
+  landingPageSlug String?          @unique
+  budgetCents     Int              @default(0)
+  spentCents      Int              @default(0)
+  enrolledAt      DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  prospect   Prospect   @relation(fields: [prospectId], references: [id])
+  sequence   Sequence   @relation(fields: [sequenceId], references: [id])
+  sentEmails SentEmail[]
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  REPLIED
+  UNSUBSCRIBED
+}
+
+// ── Landing pages ─────────────────────────────────────────────────────────────
+model LandingPage {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  prospectEmail String
+  headline      String
+  subheadline   String?
+  painPoints    Json?
+  demoContent   Json?
+  ctaText       String
+  ctaUrl        String
+  visits        Int      @default(0)
+  ctaClicks     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Budget log ────────────────────────────────────────────────────────────────
+model BudgetTransaction {
+  id          String     @id @default(cuid())
+  prospectId  String?
+  type        BudgetType
+  amountCents Int
+  description String
+  createdAt   DateTime   @default(now())
+}
+
+enum BudgetType {
+  ENRICHMENT
+  AI_GENERATION
+  LANDING_PAGE
+}
