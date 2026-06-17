@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 * { box-sizing: border-box; }
 body { background: #f9f8f6; color: #1a1a1a; }
