@@ -8,7 +8,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ── Product knowledge ─────────────────────────────────────────────────────────
 model ProductContext {
   id          String   @id @default(cuid())
   name        String
@@ -17,14 +16,13 @@ model ProductContext {
   valueProps  Json?
   objections  Json?
   proofPoints Json?
-  segments    Json?    // buyer segments: HR, pediatricians, hospitality, etc.
+  segments    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   sequences Sequence[]
 }
 
-// ── Prospects ─────────────────────────────────────────────────────────────────
 model Prospect {
   id           String         @id @default(cuid())
   email        String         @unique
@@ -41,6 +39,7 @@ model Prospect {
   inferredOkrs Json?
   apolloId     String?
   enriched     Boolean        @default(false)
+  enrichedAt   DateTime?
   status       ProspectStatus @default(PENDING)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -59,7 +58,6 @@ enum ProspectStatus {
   UNSUBSCRIBED
 }
 
-// ── Sequences ─────────────────────────────────────────────────────────────────
 model Sequence {
   id               String         @id @default(cuid())
   name             String
@@ -101,12 +99,11 @@ enum StepType {
   BREAKUP
 }
 
-// ── Email variants (A/B) ──────────────────────────────────────────────────────
 model EmailVariant {
   id            String     @id @default(cuid())
   stepId        String
   prospectId    String
-  variantLetter String     // A, B, C
+  variantLetter String
   subject       String
   bodyText      String     @db.Text
   bodyHtml      String     @db.Text
@@ -125,7 +122,6 @@ enum BodyLength {
   LONG
 }
 
-// ── Sends & tracking ──────────────────────────────────────────────────────────
 model SentEmail {
   id           String     @id @default(cuid())
   variantId    String
@@ -151,7 +147,6 @@ enum ReplyType {
   NEUTRAL
 }
 
-// ── Enrollments ───────────────────────────────────────────────────────────────
 model Enrollment {
   id              String           @id @default(cuid())
   prospectId      String
@@ -164,8 +159,8 @@ model Enrollment {
   enrolledAt      DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  prospect   Prospect   @relation(fields: [prospectId], references: [id])
-  sequence   Sequence   @relation(fields: [sequenceId], references: [id])
+  prospect   Prospect    @relation(fields: [prospectId], references: [id])
+  sequence   Sequence    @relation(fields: [sequenceId], references: [id])
   sentEmails SentEmail[]
 }
 
@@ -177,7 +172,6 @@ enum EnrollmentStatus {
   UNSUBSCRIBED
 }
 
-// ── Landing pages ─────────────────────────────────────────────────────────────
 model LandingPage {
   id            String   @id @default(cuid())
   slug          String   @unique
@@ -194,7 +188,6 @@ model LandingPage {
   updatedAt     DateTime @updatedAt
 }
 
-// ── Budget log ────────────────────────────────────────────────────────────────
 model BudgetTransaction {
   id          String     @id @default(cuid())
   prospectId  String?
